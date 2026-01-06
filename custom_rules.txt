@@ -1,0 +1,1 @@
+Double Encoded XSS:::(%253Cscript%253E|%25253Cscript%25253E|&lt;script&gt;)
