@@ -11,6 +11,10 @@ from email.message import EmailMessage
 from tkinter.simpledialog import askstring
 import datetime
 import os
+from sklearn.ensemble import IsolationForest
+import numpy as np
+
+
 
 
 
@@ -80,6 +84,10 @@ class LogBasedDetectionSystem(tb.Window):
         ttk.Button(frame, text="Generate Report",
            command=self.generate_report,
            bootstyle=SECONDARY).pack(side=LEFT, padx=6)
+        ttk.Button(frame, text="ML Anomaly Detection",
+           command=self.run_ml_detection,
+           bootstyle=WARNING).pack(side=LEFT, padx=6)
+
 
 
 
@@ -202,6 +210,47 @@ class LogBasedDetectionSystem(tb.Window):
             return decoded if decoded.strip() else text
         except Exception:
             return text
+    def extract_features(self):
+        features = []
+
+        for log in self.logs:
+            raw = log["raw"]
+
+            ip_len = len(log["ip"]) if log["ip"] != "N/A" else 0
+            req_len = len(log["request"])
+            status_num = int(log["status"]) if log["status"].isdigit() else 0
+
+            features.append([ip_len, req_len, status_num])
+
+        return np.array(features)
+    def run_ml_detection(self):
+
+        if not self.logs:
+            messagebox.showinfo("Info", "Load logs first.")
+            return
+
+        X = self.extract_features()
+
+        model = IsolationForest(contamination=0.05, random_state=42)
+        preds = model.fit_predict(X)
+
+        for log, p in zip(self.logs, preds):
+            if p == -1:   # anomaly
+                alert = (
+                    "ML Anomaly Detected",
+                    log["time"],
+                    log["ip"],
+                    log["request"]
+                )
+                self.detected_alerts.append(alert)
+                self.attack_stats["ML Anomaly"] += 1
+                self.alert_table.insert("", "end", values=alert)
+
+        self.update_dashboard()
+
+        messagebox.showinfo("ML Detection", "Machine learning anomaly detection completed.")
+
+    
 
     
 
